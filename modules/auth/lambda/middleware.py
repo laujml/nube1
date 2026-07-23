@@ -95,6 +95,6 @@ def require_role(*allowed_roles):
 def _error_response(message: str, status_code: int) -> dict:
     return {
         "statusCode": status_code,
-        "headers": {"Content-Type": "application/json"},
+        "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
         "body": json.dumps({"error": message}),
     }

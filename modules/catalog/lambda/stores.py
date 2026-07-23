@@ -66,7 +66,7 @@ def delete_store(event) -> dict:
 def _ok(status_code: int, data) -> dict:
     return {
         "statusCode": status_code,
-        "headers": {"Content-Type": "application/json"},
+        "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
         "body": jsonutil.dumps(data),
     }
 

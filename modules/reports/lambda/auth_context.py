@@ -3,8 +3,7 @@ from functools import wraps
 
 # El Lambda Authorizer JWT (modulo auth) ya valido el token antes de invocar
 # esta Lambda, e inyecta user_id/role/email en requestContext.authorizer.
-# Este helper es el mismo patron que deberian reusar P4/P5/P6 para proteger
-# sus propias rutas sin tener que volver a decodificar el JWT.
+# Mismo patron que P3/P4/P5 para no volver a decodificar el JWT.
 
 
 def get_auth(event: dict) -> dict:

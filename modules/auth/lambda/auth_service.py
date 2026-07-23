@@ -45,7 +45,7 @@ def register(body: dict) -> dict:
 
     return {
         "statusCode": 201,
-        "headers": {"Content-Type": "application/json"},
+        "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
         "body": json.dumps({
             "message": "Usuario registrado exitosamente",
             "user_id": user_id,
@@ -71,7 +71,7 @@ def login(body: dict) -> dict:
 
     return {
         "statusCode": 200,
-        "headers": {"Content-Type": "application/json"},
+        "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
         "body": json.dumps({
             "message": "Login exitoso",
             "user_id": user["user_id"],
@@ -99,7 +99,7 @@ def refresh(body: dict) -> dict:
 
     return {
         "statusCode": 200,
-        "headers": {"Content-Type": "application/json"},
+        "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
         "body": json.dumps({
             "message": "Token renovado",
             **tokens,
@@ -115,7 +115,7 @@ def profile(event: dict) -> dict:
 
     return {
         "statusCode": 200,
-        "headers": {"Content-Type": "application/json"},
+        "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
         "body": json.dumps({
             "user_id": user["user_id"],
             "email": user["email"],
@@ -132,7 +132,7 @@ def logout(event: dict) -> dict:
 
     return {
         "statusCode": 200,
-        "headers": {"Content-Type": "application/json"},
+        "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
         "body": json.dumps({"message": "Sesion cerrada exitosamente"}),
     }
 
@@ -140,6 +140,6 @@ def logout(event: dict) -> dict:
 def _err(message: str, status_code: int) -> dict:
     return {
         "statusCode": status_code,
-        "headers": {"Content-Type": "application/json"},
+        "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
         "body": json.dumps({"error": message}),
     }

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CloudShop — Iniciar sesion</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="auth-wrap">
+    <h1>CloudShop</h1>
+
+    <div class="tabs">
+      <button id="tab-login" class="tab active" type="button">Iniciar sesion</button>
+      <button id="tab-register" class="tab" type="button">Crear cuenta</button>
+    </div>
+
+    <form id="login-form" class="card">
+      <label>Email <input type="email" id="login-email" required /></label>
+      <label>Contrasena <input type="password" id="login-password" required /></label>
+      <button type="submit">Entrar</button>
+      <p id="login-error" class="error" style="display:none"></p>
+    </form>
+
+    <form id="register-form" class="card" style="display:none">
+      <label>Nombre <input type="text" id="reg-name" required /></label>
+      <label>Email <input type="email" id="reg-email" required /></label>
+      <label>Contrasena <input type="password" id="reg-password" required minlength="8" /></label>
+      <label>Rol
+        <select id="reg-role">
+          <option value="customer">Cliente</option>
+          <option value="operator">Operador</option>
+          <option value="admin">Administrador</option>
+        </select>
+      </label>
+      <button type="submit">Registrarme</button>
+      <p id="register-error" class="error" style="display:none"></p>
+    </form>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    if (AUTH.isLoggedIn()) window.location.href = "shop.html";
+
+    const tabLogin = document.getElementById("tab-login");
+    const tabRegister = document.getElementById("tab-register");
+    const loginForm = document.getElementById("login-form");
+    const registerForm = document.getElementById("register-form");
+
+    tabLogin.onclick = () => {
+      tabLogin.classList.add("active");
+      tabRegister.classList.remove("active");
+      loginForm.style.display = "block";
+      registerForm.style.display = "none";
+    };
+    tabRegister.onclick = () => {
+      tabRegister.classList.add("active");
+      tabLogin.classList.remove("active");
+      registerForm.style.display = "block";
+      loginForm.style.display = "none";
+    };
+
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      document.getElementById("login-error").style.display = "none";
+      try {
+        const data = await apiFetch("/auth/login", {
+          method: "POST",
+          body: JSON.stringify({
+            email: document.getElementById("login-email").value,
+            password: document.getElementById("login-password").value,
+          }),
+        });
+        AUTH.save(data);
+        window.location.href = "shop.html";
+      } catch (err) {
+        showError("login-error", err.message);
+      }
+    });
+
+    registerForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      document.getElementById("register-error").style.display = "none";
+      try {
+        const data = await apiFetch("/auth/register", {
+          method: "POST",
+          body: JSON.stringify({
+            name: document.getElementById("reg-name").value,
+            email: document.getElementById("reg-email").value,
+            password: document.getElementById("reg-password").value,
+            role: document.getElementById("reg-role").value,
+          }),
+        });
+        AUTH.save(data);
+        window.location.href = "shop.html";
+      } catch (err) {
+        showError("register-error", err.message);
+      }
+    });
+  </script>
+</body>
+</html>

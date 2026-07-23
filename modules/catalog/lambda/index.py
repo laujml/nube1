@@ -13,7 +13,7 @@ def handler(event, context):
     if not route:
         return {
             "statusCode": 404,
-            "headers": {"Content-Type": "application/json"},
+            "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
             "body": json.dumps({"error": "Endpoint no encontrado"}),
         }
     return route(event, context)

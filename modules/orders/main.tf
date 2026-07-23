@@ -157,3 +157,60 @@ resource "aws_api_gateway_integration" "routes" {
   type                    = "AWS_PROXY"
   uri                     = aws_lambda_function.orders.invoke_arn
 }
+
+# --- CORS preflight (OPTIONS, integracion MOCK, sin pasar por la Lambda) ---
+# Necesario porque el frontend (P6) llama a esta API desde otro origen
+# (CloudFront/S3) y el header Authorization dispara preflight en el browser.
+locals {
+  cors_resources = {
+    orders        = aws_api_gateway_resource.orders.id
+    orders_id     = aws_api_gateway_resource.orders_id.id
+    orders_status = aws_api_gateway_resource.orders_id_status.id
+  }
+}
+
+resource "aws_api_gateway_method" "cors_options" {
+  for_each      = local.cors_resources
+  rest_api_id   = var.api_gateway_id
+  resource_id   = each.value
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "cors_options" {
+  for_each    = local.cors_resources
+  rest_api_id = var.api_gateway_id
+  resource_id = each.value
+  http_method = aws_api_gateway_method.cors_options[each.key].http_method
+  type        = "MOCK"
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "cors_options" {
+  for_each    = local.cors_resources
+  rest_api_id = var.api_gateway_id
+  resource_id = each.value
+  http_method = aws_api_gateway_method.cors_options[each.key].http_method
+  status_code = "200"
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
+resource "aws_api_gateway_integration_response" "cors_options" {
+  for_each    = local.cors_resources
+  rest_api_id = var.api_gateway_id
+  resource_id = each.value
+  http_method = aws_api_gateway_method.cors_options[each.key].http_method
+  status_code = aws_api_gateway_method_response.cors_options[each.key].status_code
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,PUT,DELETE,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+  depends_on = [aws_api_gateway_integration.cors_options]
+}

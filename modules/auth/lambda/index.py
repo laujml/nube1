@@ -8,6 +8,23 @@ def handler(event, context):
         return _authorize(event)
 
     method = event.get("httpMethod", "")
+
+    # El recurso /auth usa ANY (autorizacion NONE) en vez de metodos
+    # explicitos, asi que a diferencia de catalog/orders/reports (que
+    # resuelven el preflight con una integracion MOCK en API Gateway) el
+    # OPTIONS de CORS del frontend (P6) llega hasta aca y hay que
+    # responderlo directamente en vez de dejarlo caer al 404 default.
+    if method == "OPTIONS":
+        return {
+            "statusCode": 200,
+            "headers": {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "Content-Type,Authorization",
+                "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+            },
+            "body": "",
+        }
+
     path = event.get("path", "")
 
     path_part = path.rstrip("/").split("/")[-1] if path.rstrip("/") else ""
@@ -27,7 +44,7 @@ def handler(event, context):
 
     return {
         "statusCode": 404,
-        "headers": {"Content-Type": "application/json"},
+        "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
         "body": json.dumps({"error": "Endpoint no encontrado"}),
     }
 

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CloudShop — Mis pedidos</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <nav class="topnav">
+    <span class="brand">CloudShop</span>
+    <span id="nav-role" class="role-badge"></span>
+    <a href="shop.html">Catalogo</a>
+    <a href="orders.html">Mis pedidos</a>
+    <a id="nav-dashboard" href="dashboard.html" style="display:none">Dashboard</a>
+    <button id="btn-logout" type="button">Salir</button>
+  </nav>
+
+  <main class="single-col">
+    <h2>Pedidos</h2>
+    <p id="orders-error" class="error" style="display:none"></p>
+    <table class="data-table">
+      <thead>
+        <tr><th>ID</th><th>Estado</th><th>Total</th><th>Creado</th><th>Acciones</th></tr>
+      </thead>
+      <tbody id="orders-body"></tbody>
+    </table>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    requireAuth();
+    document.getElementById("nav-role").textContent = AUTH.getRole();
+    document.getElementById("btn-logout").onclick = logout;
+    if (["admin", "operator"].includes(AUTH.getRole())) {
+      document.getElementById("nav-dashboard").style.display = "inline";
+    }
+
+    async function loadOrders() {
+      try {
+        const data = await apiFetch("/v1/orders");
+        renderOrders(data.orders || []);
+      } catch (err) {
+        showError("orders-error", err.message);
+      }
+    }
+
+    function renderOrders(orders) {
+      const body = document.getElementById("orders-body");
+      body.innerHTML = "";
+      orders.forEach((o) => {
+        const row = document.createElement("tr");
+        const canCancel = o.status === "pending" || o.status === "confirmed";
+        row.innerHTML = `
+          <td>${o.order_id}</td>
+          <td>${o.status}</td>
+          <td>${money(o.total_amount)}</td>
+          <td>${o.created_at}</td>
+          <td>${canCancel ? `<button data-id="${o.order_id}" class="cancel-btn">Cancelar</button>` : ""}</td>
+        `;
+        if (canCancel) {
+          row.querySelector(".cancel-btn").onclick = () => cancelOrder(o.order_id);
+        }
+        body.appendChild(row);
+      });
+    }
+
+    async function cancelOrder(orderId) {
+      try {
+        await apiFetch(`/v1/orders/${orderId}/status`, {
+          method: "PUT",
+          body: JSON.stringify({ status: "cancelled" }),
+        });
+        await loadOrders();
+      } catch (err) {
+        showError("orders-error", err.message);
+      }
+    }
+
+    loadOrders();
+  </script>
+</body>
+</html>

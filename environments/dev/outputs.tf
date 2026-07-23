@@ -70,3 +70,21 @@ output "eventing_lambda_function_names" {
 output "ses_sender_identity_arn" {
   value = module.eventing.ses_sender_identity_arn
 }
+
+output "event_target_dlq_name" {
+  value = module.eventing.event_target_dlq_name
+}
+
+# --- Reports Module ---
+output "reports_lambda_function_name" {
+  value = module.reports.reports_lambda_function_name
+}
+
+# --- Monitoring Module ---
+output "alarms_sns_topic_arn" {
+  value = module.monitoring.alarms_sns_topic_arn
+}
+
+output "dashboard_name" {
+  value = module.monitoring.dashboard_name
+}

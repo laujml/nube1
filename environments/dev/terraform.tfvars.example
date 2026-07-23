@@ -1,0 +1,34 @@
+# Copia este archivo como "terraform.tfvars" (sin ".example") y completa los
+# valores reales antes de correr terraform plan/apply. terraform.tfvars NO
+# debe subirse al repo si contiene datos sensibles del entorno de cada quien
+# (revisa que este en .gitignore).
+
+# Region de AWS donde se despliega todo el stack.
+aws_region = "us-east-1"
+
+# Prefijo usado en el nombre de TODOS los recursos (tablas, funciones Lambda,
+# roles IAM, bus de EventBridge, etc.), con el patron
+# "${project_name}-${environment}-<recurso>". Usa minusculas y guiones, sin
+# espacios.
+project_name = "cloudshop"
+
+# Sufijo de ambiente, tambien parte del patron de nombres de arriba.
+# Valores tipicos: "dev", "staging", "prod".
+environment = "dev"
+
+# Nombre del bucket S3 que sirve el frontend (via CloudFront). Los nombres de
+# bucket S3 son UNICOS GLOBALMENTE en todo AWS, no solo en tu cuenta, asi que
+# no puede ser algo generico como "cloudshop-dev": agregale un sufijo propio
+# (iniciales, fecha, hash corto), ej. "cloudshop-dev-jf2026".
+s3_bucket_name = "cloudshop-dev-CAMBIA-ESTO"
+
+# Limite de requests (por IP, en una ventana de 5 min) que deja pasar la regla
+# de rate limiting del WAF antes de bloquear. Opcional: si se omite, el modulo
+# usa 1000 por default.
+waf_rate_limit = 1000
+
+# Correo remitente para las notificaciones que manda SES (modulo eventing,
+# Lambda notification_email). Mientras SES este en modo sandbox, este correo
+# debe verificarse manualmente en la consola de AWS (SES > Verified
+# identities) y solo se podra enviar a destinatarios tambien verificados.
+ses_sender_email = "tu-correo-verificado@ejemplo.com"

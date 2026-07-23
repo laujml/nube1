@@ -28,6 +28,43 @@ resource "aws_cloudwatch_event_bus" "orders" {
   }
 }
 
+# DLQ compartida para los targets de EventBridge: si una invocacion a un
+# processor agota sus reintentos (maximum_retry_attempts / maximum_event_age_in_seconds
+# en aws_cloudwatch_event_target de abajo), el evento cae aqui en vez de perderse.
+resource "aws_sqs_queue" "event_target_dlq" {
+  name                      = "${var.project_name}-${var.environment}-event-target-dlq"
+  message_retention_seconds = 1209600 # 14 dias, maximo permitido
+
+  tags = {
+    Project     = var.project_name
+    Environment = var.environment
+  }
+}
+
+resource "aws_sqs_queue_policy" "event_target_dlq" {
+  queue_url = aws_sqs_queue.event_target_dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "AllowEventBridgeDLQ"
+        Effect    = "Allow"
+        Principal = { Service = "events.amazonaws.com" }
+        Action    = "sqs:SendMessage"
+        Resource  = aws_sqs_queue.event_target_dlq.arn
+        Condition = {
+          ArnEquals = {
+            "aws:SourceArn" = [
+              aws_cloudwatch_event_rule.order_created.arn,
+              aws_cloudwatch_event_rule.order_audit.arn,
+            ]
+          }
+        }
+      }
+    ]
+  })
+}
+
 resource "aws_dynamodb_table" "audit" {
   name         = "${var.project_name}-${var.environment}-Audit"
   billing_mode = "PAY_PER_REQUEST"
@@ -119,6 +156,17 @@ resource "aws_iam_role_policy" "audit_logger" {
   })
 }
 
+# Mientras la cuenta este en SES sandbox, cada destinatario (ademas del
+# remitente) tambien debe estar verificado, y SES evalua el permiso IAM de
+# ses:SendEmail contra la identidad del DESTINATARIO ademas de la del
+# remitente (confirmado en pruebas reales: AccessDenied citando el ARN del
+# destinatario aunque el codigo solo use SES_FROM_EMAIL como Source). Por
+# eso el Resource no puede quedar scoped solo a la identidad del remitente;
+# se amplia a todas las identidades SES de la cuenta (no un Resource "*"
+# total) hasta salir de sandbox, donde ya no aplicaria esta restriccion.
+data "aws_region" "current" {}
+data "aws_caller_identity" "current" {}
+
 resource "aws_iam_role_policy" "notification_email" {
   name = "send-order-emails"
   role = aws_iam_role.processor["notification_email"].id
@@ -131,7 +179,7 @@ resource "aws_iam_role_policy" "notification_email" {
           "ses:SendEmail",
           "ses:SendRawEmail"
         ]
-        Resource = aws_ses_email_identity.sender.arn
+        Resource = "arn:aws:ses:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:identity/*"
       }
     ]
   })
@@ -219,6 +267,10 @@ resource "aws_cloudwatch_event_target" "processor" {
   retry_policy {
     maximum_event_age_in_seconds = 3600
     maximum_retry_attempts       = 2
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.event_target_dlq.arn
   }
 }
 

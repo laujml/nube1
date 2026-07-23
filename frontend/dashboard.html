@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CloudShop — Dashboard interno</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <nav class="topnav">
+    <span class="brand">CloudShop</span>
+    <span id="nav-role" class="role-badge"></span>
+    <a href="shop.html">Catalogo</a>
+    <a href="orders.html">Mis pedidos</a>
+    <a href="dashboard.html">Dashboard</a>
+    <button id="btn-logout" type="button">Salir</button>
+  </nav>
+
+  <main class="single-col">
+    <h2>Dashboard interno (reportes de negocio)</h2>
+    <p class="muted">Este dashboard es de negocio (ventas/inventario/auditoria). El dashboard tecnico de CloudWatch (metricas de Lambdas, EventBridge, DLQ) vive en la consola de AWS.</p>
+
+    <section class="card">
+      <h3>Ventas</h3>
+      <div class="filters">
+        <label>Desde <input type="date" id="sales-from" /></label>
+        <label>Hasta <input type="date" id="sales-to" /></label>
+        <button id="btn-sales" type="button">Consultar</button>
+      </div>
+      <p id="sales-error" class="error" style="display:none"></p>
+      <div id="sales-result" class="stats"></div>
+    </section>
+
+    <section class="card">
+      <h3>Inventario</h3>
+      <button id="btn-inventory" type="button">Consultar</button>
+      <p id="inventory-error" class="error" style="display:none"></p>
+      <div id="inventory-result"></div>
+    </section>
+
+    <section class="card">
+      <h3>Auditoria</h3>
+      <div class="filters">
+        <label>Desde <input type="date" id="audit-from" /></label>
+        <label>Hasta <input type="date" id="audit-to" /></label>
+        <button id="btn-audit" type="button">Consultar</button>
+      </div>
+      <p id="audit-error" class="error" style="display:none"></p>
+      <table class="data-table">
+        <thead>
+          <tr><th>Fecha</th><th>Accion</th><th>Usuario</th><th>Pedido</th><th>Resultado</th></tr>
+        </thead>
+        <tbody id="audit-body"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    requireRole(["admin", "operator"]);
+    document.getElementById("nav-role").textContent = AUTH.getRole();
+    document.getElementById("btn-logout").onclick = logout;
+
+    function today() {
+      return new Date().toISOString().slice(0, 10);
+    }
+    function firstOfMonth() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+    }
+    document.getElementById("sales-from").value = firstOfMonth();
+    document.getElementById("sales-to").value = today();
+    document.getElementById("audit-from").value = firstOfMonth();
+    document.getElementById("audit-to").value = today();
+
+    document.getElementById("btn-sales").onclick = async () => {
+      const from = document.getElementById("sales-from").value;
+      const to = document.getElementById("sales-to").value;
+      try {
+        const data = await apiFetch(`/v1/reports/sales?from=${from}&to=${to}`);
+        document.getElementById("sales-result").innerHTML = `
+          <div class="stat"><span>${data.total_orders}</span><label>Pedidos</label></div>
+          <div class="stat"><span>${money(data.total_sales_amount)}</span><label>Ventas totales</label></div>
+          <div class="stat"><span>${JSON.stringify(data.orders_by_status)}</span><label>Por estado</label></div>
+        `;
+      } catch (err) {
+        showError("sales-error", err.message);
+      }
+    };
+
+    document.getElementById("btn-inventory").onclick = async () => {
+      try {
+        const data = await apiFetch("/v1/reports/inventory");
+        const lowStockRows = (data.low_stock_products || [])
+          .map((p) => `<tr><td>${p.name}</td><td>${p.stock}</td></tr>`)
+          .join("");
+        document.getElementById("inventory-result").innerHTML = `
+          <div class="stats">
+            <div class="stat"><span>${data.total_products}</span><label>Productos</label></div>
+            <div class="stat"><span>${data.total_stock}</span><label>Stock total</label></div>
+            <div class="stat"><span>${data.low_stock_products.length}</span><label>Stock bajo (&le; ${data.low_stock_threshold})</label></div>
+          </div>
+          <table class="data-table"><thead><tr><th>Producto</th><th>Stock</th></tr></thead>
+          <tbody>${lowStockRows || "<tr><td colspan=2>Sin productos con stock bajo</td></tr>"}</tbody></table>
+        `;
+      } catch (err) {
+        showError("inventory-error", err.message);
+      }
+    };
+
+    document.getElementById("btn-audit").onclick = async () => {
+      const from = document.getElementById("audit-from").value;
+      const to = document.getElementById("audit-to").value;
+      try {
+        const data = await apiFetch(`/v1/reports/audit?from=${from}&to=${to}`);
+        const body = document.getElementById("audit-body");
+        body.innerHTML = (data.events || [])
+          .map(
+            (e) => `<tr><td>${e.fecha}</td><td>${e.accion}</td><td>${e.usuario}</td><td>${e.order_id || ""}</td><td>${e.resultado}</td></tr>`
+          )
+          .join("") || `<tr><td colspan="5">Sin eventos en el rango</td></tr>`;
+      } catch (err) {
+        showError("audit-error", err.message);
+      }
+    };
+
+    document.getElementById("btn-sales").click();
+    document.getElementById("btn-inventory").click();
+    document.getElementById("btn-audit").click();
+  </script>
+</body>
+</html>
